@@ -87,8 +87,34 @@ def irrigationWorkflow():
     print("Activating pump out")
     activateRelayWithTimeout(8, 10)  # 10 seconds for demo
 
+# Sensor commands
+soil_temperature =[1, 3, 0, 6, 0, 1, 100, 11]
+def readTemperature():
+    serial_read_data(ser)
+    ser.write(soil_temperature)
+    time.sleep(1)
+    return serial_read_data(ser)
+
+soil_moisture = [1, 3, 0, 7, 0, 1, 53, 203]
+def readMoisture():
+    serial_read_data(ser)
+    ser.write(soil_moisture)
+    time.sleep(1)
+    return serial_read_data(ser)
+
+def testSensors():
+    while True:
+        print("TEST SENSOR")
+        print(readMoisture())
+        time.sleep(1)
+        print(readTemperature())
+        time.sleep(1)
+
 # Run the workflow
 irrigationWorkflow()
 
-# Close serial connection
+# Test sensors continuously
+testSensors()
+
+# Close serial connection (not reachable due to the infinite loop in testSensors)
 ser.close()
