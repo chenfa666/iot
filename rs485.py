@@ -1,31 +1,39 @@
 import os
 import time
+import serial
 import serial.tools.list_ports
-from Adafruit_IO import Client, Feed, RequestError
+from Adafruit_IO import Client, RequestError
 
-def getPort():
+def add_modbus_crc(msg):
+    crc = 0xFFFF
+    for n in range(len(msg)):
+        crc ^= msg[n]
+        for i in range(8):
+            if crc & 1:
+                crc >>= 1
+                crc ^= 0xA001
+            else:
+                crc >>= 1
+    ba = crc.to_bytes(2, byteorder='little')
+    msg.append(ba[0])
+    msg.append(ba[1])
+    return msg
+
+def get_port():
     ports = serial.tools.list_ports.comports()
-    N = len(ports)
-    commPort = "None"
-    for i in range(0, N):
-        port = ports[i]
-        strPort = str(port)
-        if "USB" in strPort:
-            splitPort = strPort.split(" ")
-            commPort = (splitPort[0])
-    return commPort
+    for port in ports:
+        if "USB" in str(port):
+            return port.device
+    return "/dev/ttyUSB1"  # Default port
 
-portName = getPort()
-if portName == "None":
-    portName = "/dev/ttyUSB1"
-
-print(portName)
+port_name = get_port()
+print(f"Using port: {port_name}")
 
 try:
-    ser = serial.Serial(port=portName, baudrate=115200)
-    print("Opened successfully")
-except:
-    print("Cannot open the port")
+    ser = serial.Serial(port=port_name, baudrate=9600)
+    print("Serial port opened successfully")
+except serial.SerialException as e:
+    print(f"Failed to open serial port: {e}")
     exit()
 
 # Adafruit IO setup
@@ -42,84 +50,62 @@ aio = Client(AIO_USERNAME, AIO_KEY)
 # Relay commands
 relay_commands = {
     1: {'on': [1, 6, 0, 0, 0, 255], 'off': [1, 6, 0, 0, 0, 0]},
-    2: {'on': [2, 6, 0, 1, 0, 255], 'off': [2, 6, 0, 1, 0, 0]},
-    3: {'on': [3, 6, 0, 2, 0, 255], 'off': [3, 6, 0, 2, 0, 0]},
-    4: {'on': [4, 6, 0, 3, 0, 255], 'off': [4, 6, 0, 3, 0, 0]},
-    5: {'on': [5, 6, 0, 4, 0, 255], 'off': [5, 6, 0, 4, 0, 0]},
-    6: {'on': [6, 6, 0, 5, 0, 255], 'off': [6, 6, 0, 5, 0, 0]},
-    7: {'on': [7, 6, 0, 6, 0, 255], 'off': [7, 6, 0, 6, 0, 0]},
-    8: {'on': [8, 6, 0, 7, 0, 255], 'off': [8, 6, 0, 7, 0, 0]},
+    2: {'on': [2, 6, 0, 0, 0, 255], 'off': [2, 6, 0, 0, 0, 0]},
+    3: {'on': [3, 6, 0, 0, 0, 255], 'off': [3, 6, 0, 0, 0, 0]},
+    4: {'on': [4, 6, 0, 0, 0, 255], 'off': [4, 6, 0, 0, 0, 0]},
+    5: {'on': [5, 6, 0, 0, 0, 255], 'off': [5, 6, 0, 0, 0, 0]},
+    6: {'on': [6, 6, 0, 0, 0, 255], 'off': [6, 6, 0, 0, 0, 0]},
+    7: {'on': [7, 6, 0, 0, 0, 255], 'off': [7, 6, 0, 0, 0, 0]},
+    8: {'on': [8, 6, 0, 0, 0, 255], 'off': [8, 6, 0, 0, 0, 0]},
 }
 
-def setRelay(relay_id, state):
-    if relay_id in relay_commands:
-        command = relay_commands[relay_id]['on'] if state else relay_commands[relay_id]['off']
-        ser.write(command)
-        time.sleep(1)
-        print(serial_read_data(ser))
+def set_device_state(id, state):
+    if id in relay_commands:
+        command = relay_commands[id]['on'] if state else relay_commands[id]['off']
+        try:
+            ser.write(add_modbus_crc(command))
+        except serial.SerialException as e:
+            print(f"Failed to write to serial port: {e}")
     else:
-        print(f"Invalid relay ID: {relay_id}")
+        print(f"Invalid relay ID: {id}")
 
-def serial_read_data(ser):
-    bytesToRead = ser.inWaiting()
-    if bytesToRead > 0:
-        out = ser.read(bytesToRead)
-        data_array = [b for b in out]
-        print(data_array)
-        if len(data_array) >= 7:
-            array_size = len(data_array)
-            value = data_array[array_size - 4] * 256 + data_array[array_size - 3]
-            return value
-        else:
-            return -1
-    return 0
-
-# Timer-based relay activation
-def activateRelayWithTimeout(relay_id, timeout):
-    setRelay(relay_id, True)
-    time.sleep(timeout)
-    setRelay(relay_id, False)
-
-# Example workflow
-def irrigationWorkflow():
-    # Fertilizer mixers (IDs 1, 2, 3)
-    for mixer_id in range(1, 4):
-        print(f"Activating fertilizer mixer {mixer_id}")
-        activateRelayWithTimeout(mixer_id, 10)  # 10 seconds for demo
-    
-    # Area selectors (IDs 4, 5, 6)
-    for area_id in range(4, 7):
-        print(f"Activating area selector {area_id}")
-        activateRelayWithTimeout(area_id, 5)  # 5 seconds for demo
-
-    # Pump in (ID 7)
-    print("Activating pump in")
-    activateRelayWithTimeout(7, 20)  # 20 seconds for demo
-
-    # Pump out (ID 8)
-    print("Activating pump out")
-    activateRelayWithTimeout(8, 10)  # 10 seconds for demo
+def serial_read_data():
+    try:
+        bytes_to_read = ser.inWaiting()
+        if bytes_to_read > 0:
+            out = ser.read(bytes_to_read)
+            data_array = [b for b in out]
+            if len(data_array) >= 7:
+                value = data_array[-4] * 256 + data_array[-3]
+                return value
+            else:
+                return -1
+        return 0
+    except serial.SerialException as e:
+        print(f"Failed to read from serial port: {e}")
+        return None
 
 # Sensor commands
-soil_temperature = [1, 3, 0, 6, 0, 1, 100, 11]
-def readTemperature():
-    serial_read_data(ser)
-    ser.write(soil_temperature)
-    time.sleep(1)
-    return serial_read_data(ser)
+soil_temperature_command = [1, 3, 0, 6, 0, 1]
+soil_moisture_command = [1, 3, 0, 7, 0, 1]
 
-soil_moisture = [1, 3, 0, 7, 0, 1, 53, 203]
-def readMoisture():
-    serial_read_data(ser)
-    ser.write(soil_moisture)
+def read_temperature():
+    serial_read_data()
+    ser.write(add_modbus_crc(soil_temperature_command))
     time.sleep(1)
-    return serial_read_data(ser)
+    return serial_read_data()
 
-def testSensors():
+def read_moisture():
+    serial_read_data()
+    ser.write(add_modbus_crc(soil_moisture_command))
+    time.sleep(1)
+    return serial_read_data()
+
+def test_sensors():
     while True:
-        print("TEST SENSOR")
-        moisture = readMoisture()
-        temperature = readTemperature()
+        print("Testing sensors")
+        moisture = read_moisture()
+        temperature = read_temperature()
         
         print(f"Moisture: {moisture}")
         print(f"Temperature: {temperature}")
@@ -132,11 +118,36 @@ def testSensors():
 
         time.sleep(2)
 
+# Workflow and relay activation
+def activate_relay_with_timeout(relay_id, timeout):
+    set_device_state(relay_id, True)
+    time.sleep(timeout)
+    set_device_state(relay_id, False)
+
+def irrigation_workflow():
+    # Fertilizer mixers (IDs 1, 2, 3)
+    for mixer_id in range(1, 4):
+        print(f"Activating fertilizer mixer {mixer_id}")
+        activate_relay_with_timeout(mixer_id, 10)  # 10 seconds for demo
+    
+    # Area selectors (IDs 4, 5, 6)
+    for area_id in range(4, 7):
+        print(f"Activating area selector {area_id}")
+        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
+
+    # Pump in (ID 7)
+    print("Activating pump in")
+    activate_relay_with_timeout(7, 20)  # 20 seconds for demo
+
+    # Pump out (ID 8)
+    print("Activating pump out")
+    activate_relay_with_timeout(8, 10)  # 10 seconds for demo
+
 # Run the workflow
-irrigationWorkflow()
+irrigation_workflow()
 
 # Test sensors continuously
-testSensors()
+test_sensors()
 
-# Close serial connection (not reachable due to the infinite loop in testSensors)
+# Close serial connection (not reachable due to the infinite loop in test_sensors)
 ser.close()
