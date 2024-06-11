@@ -1,5 +1,7 @@
+import os
 import time
 import serial.tools.list_ports
+from Adafruit_IO import Client, Feed, RequestError
 
 def getPort():
     ports = serial.tools.list_ports.comports()
@@ -26,16 +28,27 @@ except:
     print("Cannot open the port")
     exit()
 
+# Adafruit IO setup
+AIO_FEED_ID = ["humid", "light"]
+AIO_USERNAME = os.getenv('AIO_USERNAME')
+AIO_KEY = os.getenv('AIO_KEY')
+
+if not AIO_USERNAME or not AIO_KEY:
+    print("Missing Adafruit IO credentials")
+    exit()
+
+aio = Client(AIO_USERNAME, AIO_KEY)
+
 # Relay commands
 relay_commands = {
-    1: {'on': [0, 6, 0, 0, 0, 255, 200, 91], 'off': [0, 6, 0, 0, 0, 0, 136, 27]},
-    2: {'on': [0, 6, 0, 1, 0, 255, 201, 220], 'off': [0, 6, 0, 1, 0, 0, 137, 156]},
-    3: {'on': [0, 6, 0, 2, 0, 255, 203, 85], 'off': [0, 6, 0, 2, 0, 0, 139, 21]},
-    4: {'on': [0, 6, 0, 3, 0, 255, 204, 180], 'off': [0, 6, 0, 3, 0, 0, 140, 116]},
-    5: {'on': [0, 6, 0, 4, 0, 255, 206, 45], 'off': [0, 6, 0, 4, 0, 0, 142, 237]},
-    6: {'on': [0, 6, 0, 5, 0, 255, 207, 140], 'off': [0, 6, 0, 5, 0, 0, 143, 76]},
-    7: {'on': [0, 6, 0, 6, 0, 255, 209, 5], 'off': [0, 6, 0, 6, 0, 0, 145, 141]},
-    8: {'on': [0, 6, 0, 7, 0, 255, 210, 100], 'off': [0, 6, 0, 7, 0, 0, 146, 236]},
+    1: {'on': [1, 6, 0, 0, 0, 255], 'off': [1, 6, 0, 0, 0, 0]},
+    2: {'on': [2, 6, 0, 1, 0, 255], 'off': [2, 6, 0, 1, 0, 0]},
+    3: {'on': [3, 6, 0, 2, 0, 255], 'off': [3, 6, 0, 2, 0, 0]},
+    4: {'on': [4, 6, 0, 3, 0, 255], 'off': [4, 6, 0, 3, 0, 0]},
+    5: {'on': [5, 6, 0, 4, 0, 255], 'off': [5, 6, 0, 4, 0, 0]},
+    6: {'on': [6, 6, 0, 5, 0, 255], 'off': [6, 6, 0, 5, 0, 0]},
+    7: {'on': [7, 6, 0, 6, 0, 255], 'off': [7, 6, 0, 6, 0, 0]},
+    8: {'on': [8, 6, 0, 7, 0, 255], 'off': [8, 6, 0, 7, 0, 0]},
 }
 
 def setRelay(relay_id, state):
@@ -88,7 +101,7 @@ def irrigationWorkflow():
     activateRelayWithTimeout(8, 10)  # 10 seconds for demo
 
 # Sensor commands
-soil_temperature =[1, 3, 0, 6, 0, 1, 100, 11]
+soil_temperature = [1, 3, 0, 6, 0, 1, 100, 11]
 def readTemperature():
     serial_read_data(ser)
     ser.write(soil_temperature)
@@ -105,10 +118,19 @@ def readMoisture():
 def testSensors():
     while True:
         print("TEST SENSOR")
-        print(readMoisture())
-        time.sleep(1)
-        print(readTemperature())
-        time.sleep(1)
+        moisture = readMoisture()
+        temperature = readTemperature()
+        
+        print(f"Moisture: {moisture}")
+        print(f"Temperature: {temperature}")
+        
+        try:
+            aio.send(AIO_FEED_ID[0], moisture)
+            aio.send(AIO_FEED_ID[1], temperature)
+        except RequestError as e:
+            print(f"Error sending data to Adafruit IO: {e}")
+
+        time.sleep(2)
 
 # Run the workflow
 irrigationWorkflow()
