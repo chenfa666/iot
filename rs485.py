@@ -1,8 +1,8 @@
-import os
+# rs485.py
+
 import time
 import serial
 import serial.tools.list_ports
-from Adafruit_IO import Client, RequestError
 
 def add_modbus_crc(msg):
     crc = 0xFFFF
@@ -35,17 +35,6 @@ try:
 except serial.SerialException as e:
     print(f"Failed to open serial port: {e}")
     exit()
-
-# Adafruit IO setup
-AIO_FEED_ID = ["humid", "light"]
-AIO_USERNAME = os.getenv('AIO_USERNAME')
-AIO_KEY = os.getenv('AIO_KEY')
-
-if not AIO_USERNAME or not AIO_KEY:
-    print("Missing Adafruit IO credentials")
-    exit()
-
-aio = Client(AIO_USERNAME, AIO_KEY)
 
 # Relay commands
 relay_commands = {
@@ -101,24 +90,6 @@ def read_moisture():
     time.sleep(1)
     return serial_read_data()
 
-def test_sensors():
-    while True:
-        print("Testing sensors")
-        moisture = read_moisture()
-        temperature = read_temperature()
-        
-        print(f"Moisture: {moisture}")
-        print(f"Temperature: {temperature}")
-        
-        try:
-            aio.send(AIO_FEED_ID[0], moisture)
-            aio.send(AIO_FEED_ID[1], temperature)
-        except RequestError as e:
-            print(f"Error sending data to Adafruit IO: {e}")
-
-        time.sleep(2)
-
-# Workflow and relay activation
 def activate_relay_with_timeout(relay_id, timeout):
     set_device_state(relay_id, True)
     time.sleep(timeout)
@@ -143,11 +114,6 @@ def irrigation_workflow():
     print("Activating pump out")
     activate_relay_with_timeout(8, 10)  # 10 seconds for demo
 
-# Run the workflow
-irrigation_workflow()
-
-# Test sensors continuously
-test_sensors()
-
-# Close serial connection (not reachable due to the infinite loop in test_sensors)
-ser.close()
+if __name__ == "__main__":
+    irrigation_workflow()
+    ser.close()
