@@ -23,13 +23,13 @@ def send_state_to_aio(state):
 def test_sensors():
     while True:
         print("Testing sensors")
-        moisture = rs485.read_moisture()
-        temperature = rs485.read_temperature()
-        
-        print(f"Moisture: {moisture}")
-        print(f"Temperature: {temperature}")
-        
         try:
+            moisture = rs485.read_moisture()
+            temperature = rs485.read_temperature()
+
+            print(f"Moisture: {moisture}")
+            print(f"Temperature: {temperature}")
+
             aio.send(AIO_FEED_ID[0], moisture)
             aio.send(AIO_FEED_ID[1], temperature)
         except RequestError as e:
