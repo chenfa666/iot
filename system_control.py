@@ -1,5 +1,3 @@
-# system_control.py
-
 import os
 import time
 import schedule
@@ -33,9 +31,33 @@ def test_sensors():
 
         time.sleep(2)
 
+def activate_relay_with_timeout(relay_id, timeout):
+    rs485.set_device_state(relay_id, True)
+    time.sleep(timeout)
+    rs485.set_device_state(relay_id, False)
+
+def irrigation_workflow():
+    # Fertilizer mixers (IDs 1, 2, 3)
+    for mixer_id in range(1, 4):
+        print(f"Activating fertilizer mixer {mixer_id}")
+        activate_relay_with_timeout(mixer_id, 10)  # 10 seconds for demo
+    
+    # Area selectors (IDs 4, 5, 6)
+    for area_id in range(4, 7):
+        print(f"Activating area selector {area_id}")
+        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
+
+    # Pump in (ID 7)
+    print("Activating pump in")
+    activate_relay_with_timeout(7, 20)  # 20 seconds for demo
+
+    # Pump out (ID 8)
+    print("Activating pump out")
+    activate_relay_with_timeout(8, 10)  # 10 seconds for demo
+
 def scheduled_irrigation_workflow():
     print("Scheduled irrigation workflow started")
-    rs485.irrigation_workflow()
+    irrigation_workflow()
 
 def schedule_tasks():
     # Schedule the irrigation workflow at specific times
@@ -48,8 +70,7 @@ def schedule_tasks():
         time.sleep(1)
 
 if __name__ == "__main__":
-    # Run the sensor testing in a separate thread or process if needed
-    # For now, we'll run it sequentially in this example
+    # Run the sensor testing in a separate thread
     import threading
     sensor_thread = threading.Thread(target=test_sensors)
     sensor_thread.start()

@@ -1,5 +1,3 @@
-# rs485.py
-
 import time
 import serial
 import serial.tools.list_ports
@@ -63,11 +61,14 @@ def serial_read_data():
         bytes_to_read = ser.inWaiting()
         if bytes_to_read > 0:
             out = ser.read(bytes_to_read)
+            print(f"Raw data received: {out}")  # Debugging line
             data_array = [b for b in out]
+            print(f"Data array: {data_array}")  # Debugging line
             if len(data_array) >= 7:
                 value = data_array[-4] * 256 + data_array[-3]
                 return value
             else:
+                print("Data array length is less than expected")  # Debugging line
                 return -1
         return 0
     except serial.SerialException as e:
@@ -79,41 +80,13 @@ soil_temperature_command = [1, 3, 0, 6, 0, 1]
 soil_moisture_command = [1, 3, 0, 7, 0, 1]
 
 def read_temperature():
-    serial_read_data()
+    serial_read_data()  # Clear buffer before sending command
     ser.write(add_modbus_crc(soil_temperature_command))
     time.sleep(1)
     return serial_read_data()
 
 def read_moisture():
-    serial_read_data()
+    serial_read_data()  # Clear buffer before sending command
     ser.write(add_modbus_crc(soil_moisture_command))
     time.sleep(1)
     return serial_read_data()
-
-def activate_relay_with_timeout(relay_id, timeout):
-    set_device_state(relay_id, True)
-    time.sleep(timeout)
-    set_device_state(relay_id, False)
-
-def irrigation_workflow():
-    # Fertilizer mixers (IDs 1, 2, 3)
-    for mixer_id in range(1, 4):
-        print(f"Activating fertilizer mixer {mixer_id}")
-        activate_relay_with_timeout(mixer_id, 10)  # 10 seconds for demo
-    
-    # Area selectors (IDs 4, 5, 6)
-    for area_id in range(4, 7):
-        print(f"Activating area selector {area_id}")
-        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
-
-    # Pump in (ID 7)
-    print("Activating pump in")
-    activate_relay_with_timeout(7, 20)  # 20 seconds for demo
-
-    # Pump out (ID 8)
-    print("Activating pump out")
-    activate_relay_with_timeout(8, 10)  # 10 seconds for demo
-
-if __name__ == "__main__":
-    irrigation_workflow()
-    ser.close()
