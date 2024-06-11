@@ -4,7 +4,7 @@ import schedule
 from Adafruit_IO import Client, RequestError
 import rs485
 
-AIO_FEED_ID = ["humid", "temp", "state"]
+AIO_FEED_ID = ["humid", "light", "state", "schedule"]
 AIO_USERNAME = os.getenv('AIO_USERNAME')
 AIO_KEY = os.getenv('AIO_KEY')
 
@@ -43,44 +43,37 @@ def activate_relay_with_timeout(relay_id, timeout):
     rs485.set_device_state(relay_id, False)
 
 def irrigation_workflow():
-    # State: MIXER 1
     current_state = "MIXER 1"
     print(f"Activating {current_state}")
     send_state_to_aio(current_state)
-    activate_relay_with_timeout(1, 10)  # 10 seconds for demo
+    activate_relay_with_timeout(1, 10)
 
-    # State: MIXER 2
     current_state = "MIXER 2"
     print(f"Activating {current_state}")
     send_state_to_aio(current_state)
-    activate_relay_with_timeout(2, 10)  # 10 seconds for demo
+    activate_relay_with_timeout(2, 10)
 
-    # State: MIXER 3
     current_state = "MIXER 3"
     print(f"Activating {current_state}")
     send_state_to_aio(current_state)
-    activate_relay_with_timeout(3, 10)  # 10 seconds for demo
+    activate_relay_with_timeout(3, 10)
 
-    # State: PUMP IN
     current_state = "PUMP IN"
     print(f"Activating {current_state}")
     send_state_to_aio(current_state)
-    activate_relay_with_timeout(7, 20)  # 20 seconds for demo
+    activate_relay_with_timeout(7, 20)
 
-    # State: SELECTOR
     for area_id in range(4, 7):
         current_state = f"SELECTOR {area_id}"
         print(f"Activating {current_state}")
         send_state_to_aio(current_state)
-        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
+        activate_relay_with_timeout(area_id, 5)
 
-        # State: PUMP OUT at each area
         current_state = f"PUMP OUT at area {area_id}"
         print(f"Activating {current_state}")
         send_state_to_aio(current_state)
-        activate_relay_with_timeout(8, 10)  # 10 seconds for demo
+        activate_relay_with_timeout(8, 10)
 
-    # State: NEXT CYCLE (loop back to IDLE)
     current_state = "NEXT CYCLE"
     print(f"Cycle complete, returning to {current_state}")
     send_state_to_aio(current_state)
@@ -90,20 +83,59 @@ def scheduled_irrigation_workflow():
     irrigation_workflow()
 
 def schedule_tasks():
-    # Schedule the irrigation workflow at specific times
     schedule.every().day.at("06:00").do(scheduled_irrigation_workflow)
     schedule.every().day.at("18:00").do(scheduled_irrigation_workflow)
 
-    # Run the scheduled tasks
     while True:
         schedule.run_pending()
         time.sleep(1)
 
+def add_schedule(time_str):
+    with schedule_lock:
+        schedule.every().day.at(time_str).do(scheduled_irrigation_workflow)
+    print(f"Added schedule: {time_str}")
+
+def remove_schedule(time_str):
+    with schedule_lock:
+        job_found = False
+        for job in schedule.jobs:
+            if job.at_time == time_str:
+                schedule.cancel_job(job)
+                job_found = True
+                break
+    if job_found:
+        print(f"Removed schedule: {time_str}")
+    else:
+        print(f"No schedule found at: {time_str}")
+
+def handle_schedule_commands():
+    while True:
+        try:
+            command = aio.receive(AIO_FEED_ID[3]).value
+
+            if command:
+                action, time_str = command.split(',')
+                if action == 'add':
+                    add_schedule(time_str)
+                elif action == 'remove':
+                    remove_schedule(time_str)
+                aio.send(AIO_FEED_ID[3], "")  # Clear the command after processing
+
+        except RequestError as e:
+            print(f"Error handling schedule commands: {e}")
+        except ValueError as ve:
+            print(f"Invalid command format: {ve}")
+
+        time.sleep(5)  # Check for new commands every 5 seconds
+
 if __name__ == "__main__":
-    # Run the sensor testing in a separate thread
     import threading
+    schedule_lock = threading.Lock()
+
     sensor_thread = threading.Thread(target=test_sensors)
     sensor_thread.start()
 
-    # Start the scheduler
+    command_thread = threading.Thread(target=handle_schedule_commands)
+    command_thread.start()
+
     schedule_tasks()
