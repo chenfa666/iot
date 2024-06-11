@@ -4,7 +4,7 @@ import schedule
 from Adafruit_IO import Client, RequestError
 import rs485
 
-AIO_FEED_ID = ["humid", "light"]
+AIO_FEED_ID = ["humid", "temp", "state"]
 AIO_USERNAME = os.getenv('AIO_USERNAME')
 AIO_KEY = os.getenv('AIO_KEY')
 
@@ -13,6 +13,12 @@ if not AIO_USERNAME or not AIO_KEY:
     exit()
 
 aio = Client(AIO_USERNAME, AIO_KEY)
+
+def send_state_to_aio(state):
+    try:
+        aio.send(AIO_FEED_ID[2], state)
+    except RequestError as e:
+        print(f"Error sending state to Adafruit IO: {e}")
 
 def test_sensors():
     while True:
@@ -37,23 +43,47 @@ def activate_relay_with_timeout(relay_id, timeout):
     rs485.set_device_state(relay_id, False)
 
 def irrigation_workflow():
-    # Fertilizer mixers (IDs 1, 2, 3)
-    for mixer_id in range(1, 4):
-        print(f"Activating fertilizer mixer {mixer_id}")
-        activate_relay_with_timeout(mixer_id, 10)  # 10 seconds for demo
-    
-    # Area selectors (IDs 4, 5, 6)
-    for area_id in range(4, 7):
-        print(f"Activating area selector {area_id}")
-        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
+    # State: MIXER 1
+    current_state = "MIXER 1"
+    print(f"Activating {current_state}")
+    send_state_to_aio(current_state)
+    activate_relay_with_timeout(1, 10)  # 10 seconds for demo
 
-    # Pump in (ID 7)
-    print("Activating pump in")
+    # State: MIXER 2
+    current_state = "MIXER 2"
+    print(f"Activating {current_state}")
+    send_state_to_aio(current_state)
+    activate_relay_with_timeout(2, 10)  # 10 seconds for demo
+
+    # State: MIXER 3
+    current_state = "MIXER 3"
+    print(f"Activating {current_state}")
+    send_state_to_aio(current_state)
+    activate_relay_with_timeout(3, 10)  # 10 seconds for demo
+
+    # State: PUMP IN
+    current_state = "PUMP IN"
+    print(f"Activating {current_state}")
+    send_state_to_aio(current_state)
     activate_relay_with_timeout(7, 20)  # 20 seconds for demo
 
-    # Pump out (ID 8)
-    print("Activating pump out")
-    activate_relay_with_timeout(8, 10)  # 10 seconds for demo
+    # State: SELECTOR
+    for area_id in range(4, 7):
+        current_state = f"SELECTOR {area_id}"
+        print(f"Activating {current_state}")
+        send_state_to_aio(current_state)
+        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
+
+        # State: PUMP OUT at each area
+        current_state = f"PUMP OUT at area {area_id}"
+        print(f"Activating {current_state}")
+        send_state_to_aio(current_state)
+        activate_relay_with_timeout(8, 10)  # 10 seconds for demo
+
+    # State: NEXT CYCLE (loop back to IDLE)
+    current_state = "NEXT CYCLE"
+    print(f"Cycle complete, returning to {current_state}")
+    send_state_to_aio(current_state)
 
 def scheduled_irrigation_workflow():
     print("Scheduled irrigation workflow started")
