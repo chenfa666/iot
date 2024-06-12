@@ -1,0 +1,88 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/bb"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/txtHappyFarm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="HAPPY FARM"
+        android:fontFamily="@font/bi"
+        android:textColor="#EDBE27"
+        android:textSize="60sp"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal" />
+
+    <TextView
+        android:id="@+id/txtTemperature"
+        android:layout_width="354dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/n"
+        android:text="Temperature:"
+        android:textColor="#EDBE27"
+        android:textSize="30sp" />
+
+    <TextView
+        android:id="@+id/txtHumidity"
+        android:layout_width="355dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:fontFamily="@font/n"
+        android:text="Humidity:"
+        android:textColor="#EDBE27"
+        android:textSize="30sp" />
+
+    <TextView
+        android:id="@+id/txtSchedule"
+        android:layout_width="354dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+
+        android:fontFamily="@font/n"
+        android:text="Schedules:"
+        android:textColor="#EDBE27"
+        android:textSize="30sp" />
+
+    <EditText
+        android:id="@+id/editTextTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:hint="HH:MM"
+        android:inputType="time"
+        android:fontFamily="@font/n"
+        android:textSize="30sp"
+
+        android:layout_marginTop="16dp"
+        android:layout_gravity="center_horizontal" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="322dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnAddSchedule"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:text="Add Schedule"
+            />
+
+        <Button
+            android:id="@+id/btnRemoveSchedule"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Remove Schedule" />
+    </LinearLayout>
+
+</LinearLayout>
