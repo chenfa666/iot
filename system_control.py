@@ -62,47 +62,32 @@ def activate_relay_with_timeout(relay_id, timeout):
         print(f"Error in activate_relay_with_timeout: {e}")
 
 def irrigation_workflow():
-     # State: MIXER 1
-    current_state = "MIXER 1"
-    print(f"Activating {current_state}")
-    send_state_to_aio(AIO_FEED_ID[2], current_state)
-    activate_relay_with_timeout(1, 10)  # 10 seconds for demo
-
-    # State: MIXER 2
-    current_state = "MIXER 2"
-    print(f"Activating {current_state}")
-    send_state_to_aio(AIO_FEED_ID[2], current_state)
-    activate_relay_with_timeout(2, 10)  # 10 seconds for demo
-
-    # State: MIXER 3
-    current_state = "MIXER 3"
-    print(f"Activating {current_state}")
-    send_state_to_aio(AIO_FEED_ID[2], current_state)
-    activate_relay_with_timeout(3, 10)  # 10 seconds for demo
-
-    # State: PUMP IN
-    current_state = "PUMP IN"
-    print(f"Activating {current_state}")
-    send_state_to_aio(AIO_FEED_ID[2], current_state)
-    activate_relay_with_timeout(7, 20)  # 20 seconds for demo
-
-    # State: SELECTOR
+    states = [
+        ("MIXER 1", 1, 10),
+        ("MIXER 2", 2, 10),
+        ("MIXER 3", 3, 10),
+        ("PUMP IN", 7, 20),
+    ]
+    
+    for state, relay_id, timeout in states:
+        print(f"Activating {state}")
+        send_state_to_aio(state)
+        activate_relay_with_timeout(relay_id, timeout)
+    
     for area_id in range(4, 7):
         current_state = f"SELECTOR {area_id}"
         print(f"Activating {current_state}")
-        send_state_to_aio(AIO_FEED_ID[2], current_state)
-        activate_relay_with_timeout(area_id, 5)  # 5 seconds for demo
-
-        # State: PUMP OUT at each area
+        send_state_to_aio(current_state)
+        activate_relay_with_timeout(area_id, 5)
+        
         current_state = f"PUMP OUT at area {area_id}"
         print(f"Activating {current_state}")
-        send_state_to_aio(AIO_FEED_ID[2], current_state)
-        activate_relay_with_timeout(8, 10)  # 10 seconds for demo
-
-    # State: NEXT CYCLE (loop back to IDLE)
+        send_state_to_aio(current_state)
+        activate_relay_with_timeout(8, 10)
+    
     current_state = "NEXT CYCLE"
     print(f"Cycle complete, returning to {current_state}")
-    send_state_to_aio(AIO_FEED_ID[2], current_state)
+    send_state_to_aio(current_state)
 
 def scheduled_irrigation_workflow():
     print("Scheduled irrigation workflow started")
