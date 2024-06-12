@@ -40,8 +40,8 @@ def test_sensors():
     while True:
         try:
             print("Testing sensors")
-            moisture = rs485.read_moisture()
-            temperature = rs485.read_temperature()
+            moisture = rs485.read_moisture()/100
+            temperature = rs485.read_temperature()/100
         
             print(f"Moisture: {moisture}")
             print(f"Temperature: {temperature}")
@@ -103,7 +103,7 @@ def irrigation_workflow():
     current_state = "NEXT CYCLE"
     print(f"Cycle complete, returning to {current_state}")
     send_state_to_aio(AIO_FEED_ID[2], current_state)
-    
+
 def scheduled_irrigation_workflow():
     print("Scheduled irrigation workflow started")
     irrigation_workflow()
@@ -136,8 +136,6 @@ def schedule_tasks():
 
 def on_connect(client, userdata, flags, rc):
     print(f"Connected with result code {rc}")
-    # Subscribe to temperature feed
-    client.subscribe(f"{AIO_USERNAME}/feeds/temp")
     # Subscribe to command feed for scheduling
     client.subscribe(f"{AIO_USERNAME}/feeds/command")
 
